@@ -1,115 +1,44 @@
 import pandas as pd
-import random
 import matplotlib.pyplot as plt
 
-def main():
-    data = pd.read_csv("data/skincancer.csv", delimiter=',', index_col=0)
-    # y = Mort
-    # x = Lat
-    x = data.Lat.values
-    y = data.Mort.values
-    lin_reg = LinearRegression(x, y)
-    hawaii = lin_reg.predict(20)
-    print(hawaii)
-    k_means = KMeans()
+from linear_regression import LinearRegression
+from kmeans import KMeans, Point
 
+# NOTE(Jovan): Rucno napravljen KMeans, moze i sa sklearn
+def main():
+    # NOTE(Jovan): Load data
+    data = pd.read_csv("data/skincancer.csv", delimiter=',', index_col=0)
+    mort = data.Mort.values
     lat = data.Lat.values
     lon = data.Long.values
+
+    # NOTE(Jovan): Init LinearRegression and predict
+    lin_reg = LinearRegression(lat, mort)
+    hawaii = lin_reg.predict(20)
+    print("Prediction for hawaii[lat=20]:", hawaii)
+
+    # NOTE(Jovan): Init KMeans and add lat and long points
+    k_means = KMeans()
     for i, j in zip(lat, lon):
         k_means.points.append(Point(i, j))
-    k_means.split(4, 0.01)
+    k_means.split(2, 0.01)
+
+    # NOTE(Jovan): Plot clusters
     fig = plt.figure()
     ax = fig.add_axes([0,0,1,1])
-    for cluster in k_means._clusters:
-        ax.scatter(cluster.elements[:].x, cluster.elements[:].y)
+    # NOTE(Jovan): First clusters
+    for p in k_means._clusters[0].points:
+        ax.scatter(p.x, p.y, c="#ff0000")
+    # NOTE(Jovan): Second clusters
+    for p in k_means._clusters[1].points:
+        ax.scatter(p.x, p.y, c="#00ff00")
+
+    # NOTE(Jovan): Plot cluster centers
+    center1 = k_means._clusters[0].center
+    center2 = k_means._clusters[1].center
+    ax.scatter(center1.x, center1.y, marker="P", c="#ff0000")
+    ax.scatter(center2.x, center2.y, marker="P", c="#00ff00")
     plt.show()
-
-class LinearRegression:
-    def __init__(self, x, y):
-        self._a = 0
-        self._b = 0
-        self._regression(x, y)
-
-    def _regression(self, x, y):
-        n = len(x)
-        xy_sum = 0
-        for xi, yi in zip(x, y):
-            xy_sum += xi * yi
-        x_sum = sum(x)
-        y_sum = sum(y)
-        xx_sum = 0
-        for xi in x:
-            xx_sum += xi * xi
-
-        self._a = n * (xy_sum) - x_sum * y_sum
-        self._a = self._a / (n*xx_sum - x_sum * x_sum)
-        self._b = 1/n * (y_sum - self._a * x_sum)
-
-    def predict(self, x):
-        return x * self._a + self._b
-
-class Point:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-
-class Cluster:
-    def __init__(self):
-        self.center = Point(0, 0)
-        self.elements = []
-
-    def distance(self, point):
-        return abs(self.center.x - point.x) + abs(self.center.y - point.y)
-
-    def move_center(self):
-        x_sum = 0
-        y_sum = 0
-        for p in self.elements:
-            x_sum += p.x
-            y_sum += p.y
-
-        n = len(self.elements)
-        if n <= 0: return 0
-        self.center = Point(x_sum / n, y_sum / n)
-        return self.distance(self.center)
-
-    
-class KMeans:
-    def __init__(self):
-        self.points = []
-        self._clusters = []
-        self._groups = 0
-
-    def split(self, groups, errT):
-        self._groups = groups
-        if groups <= 0: return
-        # Init
-        r = random.SystemRandom()
-        for i in range(groups):
-            mu = r.randint(0, len(self.points))
-            cluster = Cluster()
-            cluster.center = self.points[mu]
-            self._clusters.append(cluster)
-        # Iterative calc
-        for i in range(1000):
-            for cluster in self._clusters:
-                cluster.elements = []
-
-            for point in self.points:
-                closest = 0
-                for j in range(self._groups):
-                    if (self._clusters[closest].distance(point) 
-                            > self._clusters[j].distance(point)):
-                        closest = j
-                    self._clusters[closest].elements.append(point)
-
-            err = 0
-            for j in range(self._groups):
-                err += self._clusters[j].move_center()
-
-            if err < errT: break
-
-
 
 if __name__ == "__main__":
     main()
